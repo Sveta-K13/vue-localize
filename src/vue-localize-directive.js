@@ -2,9 +2,10 @@
  * Created by vestnik on 25/03/16.
  */
 
-import {Translator} from './libs/translate'
+// import {Translator} from './libs/translate'
 
 export const localizeVueDirective = (translator) => {
+  console.log(translator)
   return {
     translator: translator,
     deep: true,
@@ -31,7 +32,7 @@ export const localizeVueDirective = (translator) => {
       this.path = target.path
       this.vars = target.vars
       this.lang = target.lang
-      var translateTo = target.lang || this.translator.getCurrentOrDefault()
+      // var translateTo = target.lang || this.translator.getCurrentOrDefault()
       var translation = this.translator.translate(target.path, target.vars, translateTo)
       this.el.innerHTML = translation
     },

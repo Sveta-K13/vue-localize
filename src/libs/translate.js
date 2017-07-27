@@ -64,6 +64,7 @@ export class Translator {
    * @returns {String}
    */
   translate (message, params = null, lang = null) {
+    console.log(this)
     if (!lang) lang = this.getCurrentOrDefault()
     const phrasePathParts = split(message, '.')
     const isGlobal = phrasePathParts.length === 1
