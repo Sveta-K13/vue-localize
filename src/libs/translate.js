@@ -32,7 +32,7 @@ export class Translator {
    * @return {String}
    */
   _processVariables (translation, vars, path) {
-    const VARIABLES_REGEXP = /%[a-z]*%/g
+    const VARIABLES_REGEXP = /%[a-zA-Z\-]*%/g
     const arrVars = translation.match(VARIABLES_REGEXP)
     if (!arrVars) {
       return translation
@@ -64,7 +64,6 @@ export class Translator {
    * @returns {String}
    */
   translate (message, params = null, lang = null) {
-    console.log(this)
     if (!lang) lang = this.getCurrentOrDefault()
     const phrasePathParts = split(message, '.')
     const isGlobal = phrasePathParts.length === 1

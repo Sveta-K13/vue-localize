@@ -90,20 +90,26 @@ export default function install (Vue, options) {
    */
   function _localizeSubroutes (subroutes, lang, routesRegistry) {
     each(subroutes, function (route, path) {
-      if (has(route, 'name')) {
-        set(routesRegistry.initial, route.name, path)
+      if (get(route, 'name', false)) {
+        set(routesRegistry.initial, route.name, route.path)
         route.originalName = route.name
         route.name = lang + '_' + route.name
         set(routesRegistry.localized, route.name, lang)
       }
 
-      if (has(route, 'subRoutes')) {
-        var objSubs = clone(route.subRoutes)
-        unset(route, 'subRoutes')
+      if (!route.meta) {
+        route.meta = {}
+      }
+      route.meta.localized = true
+      route.meta.lang = lang
+
+      if (get(route, 'children', false)) {
+        var objSubs = clone(route.children)
+        unset(route, 'children')
 
         var subs = cloneDeep(objSubs)
         var subroutesLocalized = _localizeSubroutes(subs, lang, routesRegistry)
-        route.subRoutes = subroutesLocalized
+        route.children = subroutesLocalized
       }
     })
 
@@ -161,7 +167,9 @@ export default function install (Vue, options) {
     _recursively(routes, _collectComponents)
     _recursively(routes, _detachComponents)
 
-    each(routes, function (routeConfig, path) {
+    let result = cloneDeep(routes)
+    each(routes, function (routeConfig, index) {
+      let path = routeConfig.path
       if (!get(routeConfig.meta, 'localized', false)) {
         return
       }
@@ -171,11 +179,11 @@ export default function install (Vue, options) {
       }
 
       var objRoute = clone(routeConfig)
-      unset(routes, routeConfig.path)
+      result.splice(index, 1)
 
-      if (has(objRoute, 'subRoutes')) {
-        var objSubs = clone(objRoute.subRoutes)
-        unset(objRoute, 'subRoutes')
+      if (get(objRoute, 'children', false)) {
+        var objSubs = clone(objRoute.children)
+        unset(objRoute, 'children')
       }
 
       each(config.languages, function (langConfig, lang) {
@@ -183,7 +191,7 @@ export default function install (Vue, options) {
           return
         }
 
-        var newNode = clone(objRoute)
+        var newNode = cloneDeep(objRoute)
         if (!newNode.meta) {
           newNode.meta = {}
         }
@@ -203,22 +211,22 @@ export default function install (Vue, options) {
         }
 
         var newPath = '/' + prefix + suffix
-        newNode.meta.lang = lang
+        newNode.path = newPath
+        newNode.meta.lang = prefix
 
         var subs = cloneDeep(objSubs)
         var subroutesLocalized = _localizeSubroutes(subs, lang, routesRegistry)
-        newNode.subRoutes = subroutesLocalized
-        set(routes, newPath, newNode)
+        newNode.children = subroutesLocalized
+        result.push(newNode)
       })
     })
 
-    _recursively(routes, _attachComponents)
+    _recursively(result, _attachComponents)
 
-    return routes
+    return result
   }
 
   var routesMap = localizeRoutes(routes, config)
-  // console.log(routesMap)
   router.addRoutes(routesMap)
 
   router.beforeEach(function (to, from, next) {
@@ -227,7 +235,7 @@ export default function install (Vue, options) {
       if (_currentLanguage() !== to.meta.lang) {
         store.commit('SET_APP_LANGUAGE', to.meta.lang, config.resaveOnLocalizedRoutes)
       }
-    } else if (get(from.meta, 'localized', false) === true && !config.resaveOnLocalizedRoutes) {
+    } else if (get(from.meta, 'localized', false) && !config.resaveOnLocalizedRoutes) {
       // Restore memorized language from local storage for not localized routes
       var localStoredLanguage = getFromLocalStorage()
       if (localStoredLanguage && /* prevent unnecessary mutation call  */ from.meta.lang !== localStoredLanguage) {
@@ -294,19 +302,9 @@ export default function install (Vue, options) {
 
   const translator = new Translator(config, _currentLanguage)
 
-  const huy = (val) => {
-    return translator.translate(val)
-  }
-
-  // console.log(config, _currentLanguage)
-  // console.log(translator)
-  // translator.translate('huy')
   // Adding global filter and global method $translate
   // each({ translate }, function (helper, name) {
-  Vue.filter('translate', huy)
-  Vue.prototype['$translate'] = huy
+  Vue.filter('translate', (message, params, lang) => translator.translate(message, params, lang))
+  Vue.prototype['$translate'] = (message, params, lang) => translator.translate(message, params, lang)
   // })
-
-  // Adding directive
-  // Vue.directive('localize', localizeVueDirective(translator))
 }
